@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1096104295999",
+    "project_id": "giot-am",
+    "storage_bucket": "giot-am.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1096104295999:android:cdd17081e6257472e1028a",
+        "android_client_info": {
+          "package_name": "com.giotam.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBktMQW7UFib5j1NTD3bXuml-1XCdfkaIM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

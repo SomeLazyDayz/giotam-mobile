@@ -1,0 +1,471 @@
+import { useState, useEffect } from 'react';
+import { api } from '../api';
+import { Calendar, MapPin, Clock, ChevronRight, ClipboardList, CheckCircle2 } from 'lucide-react';
+import { Button } from './ui/button';
+import { PageHeader } from './PageHeader';
+import { toast } from 'sonner';
+
+interface HealthQuestion {
+  id: string;
+  answer: boolean | null;
+  vaccineType?: string;
+}
+
+interface DonateBloodProps {
+  onComplete?: () => void;
+  onBack?: () => void;
+}
+
+export function DonateBlood({ onComplete, onBack }: DonateBloodProps) {
+  const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  
+  // Health declaration completion state
+  const [declarationCompleted, setDeclarationCompleted] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [existingDeclaration, setExistingDeclaration] = useState<{ date: string } | null>(null);
+  
+  // Health questions state
+  const [healthQuestions, setHealthQuestions] = useState<Record<string, HealthQuestion>>({
+    q1: { id: 'q1', answer: null },
+    q2: { id: 'q2', answer: null },
+    q3_1: { id: 'q3_1', answer: null },
+    q3_2: { id: 'q3_2', answer: null },
+    q3_3: { id: 'q3_3', answer: null },
+    q3_4: { id: 'q3_4', answer: null },
+    q3_5: { id: 'q3_5', answer: null },
+    q3_6: { id: 'q3_6', answer: null },
+    q3_7: { id: 'q3_7', answer: null },
+    q3_8: { id: 'q3_8', answer: null, vaccineType: '' },
+    q3_9: { id: 'q3_9', answer: null },
+    q4_1: { id: 'q4_1', answer: null },
+    q4_2: { id: 'q4_2', answer: null },
+    q5_1: { id: 'q5_1', answer: null },
+    q5_2: { id: 'q5_2', answer: null },
+    q6: { id: 'q6', answer: null },
+  });
+
+  // 1. Khai báo state để chứa danh sách bệnh viện
+  const [locations, setLocations] = useState<any[]>([]);
+
+  // 2. Tự động gọi API khi người dùng mở màn hình này
+  useEffect(() => {
+    // Check old declaration
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        const stored = localStorage.getItem(`health_declaration_${user.id}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const daysDiff = (new Date().getTime() - new Date(parsed.date).getTime()) / (1000 * 3600 * 24);
+          if (daysDiff <= 90 && user.donations_count === parsed.donationsCount) {
+             setExistingDeclaration({ date: parsed.date });
+          }
+        }
+      } catch (e) {}
+    }
+
+    const fetchHospitals = async () => {
+      try {
+        const response = await api.get('/blood-requests');
+        const currentUserStr = localStorage.getItem('user');
+        let myBloodType = 'Khác';
+        if (currentUserStr) {
+          try {
+            const u = JSON.parse(currentUserStr);
+            myBloodType = u.blood_type || 'Khác';
+          } catch(e) {}
+        }
+        
+        // Response format: { count, blood_requests: [...] }
+        const todayStr = new Date().toISOString().split('T')[0];
+        const formattedLocations = response.data.blood_requests
+          .filter((r: any) => (!r.expiration_date || r.expiration_date >= todayStr) && (myBloodType === 'Khác' || r.blood_type === 'Khác' || r.blood_type === myBloodType))
+          .map((r: any) => ({
+          id: r.id, // ID của request
+          name: r.hospital_name || r.address || 'Bệnh viện',
+          address: `Cần nhóm máu: ${r.blood_type} - ${r.amount_ml}ml${r.expiration_date ? ' | Hết hạn: ' + new Date(r.expiration_date).toLocaleDateString('vi-VN') : ''}`,
+          available: r.status === 'open'
+        }));
+        
+        setLocations(formattedLocations);
+      } catch (error) {
+        console.error("Lỗi tải danh sách yêu cầu hiến máu:", error);
+      }
+    };
+
+    fetchHospitals();
+  }, []); 
+
+
+
+  const handleAnswerChange = (questionId: string, answer: boolean) => {
+    setHealthQuestions({
+      ...healthQuestions,
+      [questionId]: { ...healthQuestions[questionId], answer },
+    });
+  };
+
+  const handleVaccineTypeChange = (value: string) => {
+    setHealthQuestions({
+      ...healthQuestions,
+      q3_8: { ...healthQuestions.q3_8, vaccineType: value },
+    });
+  };
+
+  const allQuestionsAnswered = () => {
+    return Object.values(healthQuestions).every((q) => {
+      if (q.id === 'q3_8' && q.answer === true) {
+        return q.vaccineType && q.vaccineType.trim() !== '';
+      }
+      return q.answer !== null;
+    });
+  };
+
+  const canConfirmDeclaration = () => {
+    return allQuestionsAnswered() && agreedToTerms;
+  };
+
+  const handleConfirmDeclaration = () => {
+    if (canConfirmDeclaration()) {
+      // KIỂM TRA ĐIỀU KIỆN SỨC KHỎE
+      // Bất kỳ câu nào nãy chọn "Có" (except q1) -> Chặn
+      const hasRiskFactors = Object.entries(healthQuestions).some(([key, val]) => key !== 'q1' && val.answer === true);
+      
+      if (hasRiskFactors) {
+        toast.error("CHƯA ĐỦ ĐIỀU KIỆN HIẾN MÁU:\nDựa trên các yếu tố rủi ro bạn khai báo, bạn cần tạm hoãn hiến máu theo quy định y tế.");
+        return; // Dừng lại, không submit
+      }
+
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          localStorage.setItem(`health_declaration_${user.id}`, JSON.stringify({
+            date: new Date().toISOString(),
+            donationsCount: user.donations_count || 0
+          }));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      setDeclarationCompleted(true);
+      if (onComplete) {
+        onComplete();
+      }
+    }
+  };
+
+  const QuestionRow = ({ questionId, text }: { questionId: string; text: string }) => (
+    <div className="flex items-start justify-between gap-4 py-3 border-b border-border last:border-0">
+      <p className="text-sm text-foreground flex-1">{text}</p>
+      <div className="flex gap-2 shrink-0">
+        <button
+          onClick={() => handleAnswerChange(questionId, true)}
+          className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+            healthQuestions[questionId].answer === true
+              ? 'border-destructive bg-destructive text-destructive-foreground'
+              : 'border-border bg-card text-foreground hover:border-muted-foreground/30'
+          }`}
+        >
+          Có
+        </button>
+        <button
+          onClick={() => handleAnswerChange(questionId, false)}
+          className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+            healthQuestions[questionId].answer === false
+              ? 'border-destructive bg-destructive text-destructive-foreground'
+              : 'border-border bg-card text-foreground hover:border-muted-foreground/30'
+          }`}
+        >
+          Không
+        </button>
+      </div>
+    </div>
+  );
+
+  if (existingDeclaration) {
+    return (
+      <div className="min-h-full bg-muted flex items-center justify-center -mt-20 px-4">
+        <div className="bg-white rounded-3xl shadow-xl w-full p-8 text-center border-t-4 border-destructive">
+          <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">Đã từng kê khai!</h2>
+          <p className="text-foreground/70 mb-6 leading-relaxed">
+            Bạn đã nộp một phiếu <b>Kê khai sức khỏe</b> hợp lệ vào ngày <b>{new Date(existingDeclaration.date).toLocaleDateString('vi-VN')}</b>. Phiếu này dùng được trong 90 ngày. Bạn muốn giữ lại phiếu này hay điền mới?
+          </p>
+          <div className="space-y-3">
+            <Button
+              className="w-full bg-destructive text-white py-6 rounded-2xl font-bold text-lg"
+              onClick={() => {
+                setDeclarationCompleted(true);
+                setExistingDeclaration(null);
+                if (onComplete) onComplete();
+              }}
+            >
+              Dùng lại & Đi tiếp
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-2 border-border text-foreground py-6 rounded-2xl font-bold text-lg hover:bg-muted"
+              onClick={() => setExistingDeclaration(null)} // reset to show blank form
+            >
+              Khai báo từ đầu
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (declarationCompleted) {
+    return (
+      <div className="min-h-full bg-muted pb-20">
+        {/* Header */}
+        <div className="bg-card border-b border-border p-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold text-card-foreground">Hiến máu</h1>
+            <div className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="text-sm font-medium">Đã kê khai</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Appointment Section */}
+        <div className="p-4">
+          <h2 className="font-bold text-card-foreground mb-3">Đặt lịch hiến máu</h2>
+
+          {/* Select Location */}
+          <div className="mb-4">
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Chọn điểm hiến máu <span className="text-destructive">*</span>
+            </label>
+            <div className="space-y-2">
+              {locations.map((location) => (
+                <button
+                  key={location.id}
+                  onClick={() => location.available && setSelectedLocation(location.id)}
+                  disabled={!location.available}
+                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                    selectedLocation === location.id
+                      ? 'border-destructive bg-destructive/5'
+                      : location.available
+                      ? 'border-border bg-card hover:border-muted-foreground/30'
+                      : 'border-border bg-muted opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium text-card-foreground mb-1">{location.name}</div>
+                      <div className="text-sm text-muted-foreground flex items-center">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        {location.address}
+                      </div>
+                    </div>
+                    {location.available ? (
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    ) : (
+                      <span className="text-xs text-destructive font-medium">Đã đầy</span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+
+
+          {/* Submit Button */}
+          {selectedLocation && (
+            <div className="mt-6">
+              <Button 
+                onClick={async () => {
+                  try {
+                    const selectedLoc = locations.find(l => l.id === selectedLocation);
+                    if (!selectedLoc) return;
+
+                    // Giả định dùng Context API hoặc lấy user id đang đăng nhập
+                    const userIdStr = localStorage.getItem('userId') || JSON.parse(localStorage.getItem('user') || '{}').id;
+                    if (!userIdStr) {
+                      toast.error('Vui lòng đăng nhập lại');
+                      return;
+                    }
+                    
+                    const response = await api.post(`/blood-requests/${selectedLoc.id}/register`, {
+                      donor_id: parseInt(userIdStr),
+                      time_slot: 'Trong ngày (Theo sắp xếp của Bệnh viện)'
+                    });
+
+                    toast.success(response.data.message || 'Đăng ký hiến máu thành công!');
+                    if (onBack) onBack();
+
+                  } catch (error: any) {
+                    toast.error(error.response?.data?.error || 'Lỗi khi đăng ký hiến máu');
+                  }
+                }}
+                className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground py-6 text-base"
+              >
+                Xác nhận đăng ký hiến máu
+              </Button>
+              <p className="text-xs text-muted-foreground text-center mt-3">
+                Bạn sẽ nhận được xác nhận qua SMS và email
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-full bg-muted">
+      <PageHeader title="Kê khai sức khỏe" onBack={onBack || (() => {})} />
+      
+      <div className="p-4 space-y-4 pb-20">
+        {/* Question 1 */}
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+          <h3 className="font-medium text-foreground mb-3">1. Quý vị đã từng hiến máu chưa?</h3>
+          <QuestionRow questionId="q1" text="" />
+        </div>
+
+        {/* Question 2 */}
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+          <h3 className="font-medium text-foreground mb-3">
+            2. Quý vị đã từng mắc các bệnh như tâm thần, thần kinh, hô hấp, tiêu hóa, vàng da/viêm gan, tim mạch, huyết áp thấp/cao, bệnh thận, ho kéo dài, bệnh máu, lao, ung thư, v.v?
+          </h3>
+          <QuestionRow questionId="q2" text="" />
+        </div>
+
+        {/* Question 3 */}
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+          <h3 className="font-medium text-foreground mb-4">3. Trong vòng 6 tháng gần đây, Quý vị có:</h3>
+          <div className="space-y-0">
+            <QuestionRow questionId="q3_1" text="Sút cân >= 4kg không rõ nguyên nhân? nổi hạch kéo dài?" />
+            <QuestionRow questionId="q3_2" text="Phẫu thuật?" />
+            <QuestionRow questionId="q3_3" text="Xăm mình, xỏ lỗ tai, lỗ mũi, châm cứu?" />
+            <QuestionRow questionId="q3_4" text="Được truyền máu, chế phẩm máu?" />
+            <QuestionRow questionId="q3_5" text="Sử dụng ma túy, tiêm chích?" />
+            <QuestionRow questionId="q3_6" text="Quan hệ tình dục với người nhiễm hoặc có nguy cơ lây nhiễm HIV, viêm gan?" />
+            <QuestionRow questionId="q3_7" text="Quan hệ tình dục với nhiều người và/hoặc không có biện pháp an toàn tránh lây nhiễm?" />
+            
+            {/* Vaccine question with input */}
+            <div className="flex items-start justify-between gap-4 py-3 border-b border-border">
+              <p className="text-sm text-foreground flex-1">Tiêm vắc xin phòng bệnh?</p>
+              <div className="flex gap-2 shrink-0">
+                <button
+                  onClick={() => handleAnswerChange('q3_8', true)}
+                  className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    healthQuestions.q3_8.answer === true
+                      ? 'border-destructive bg-destructive text-destructive-foreground'
+                      : 'border-border bg-card text-foreground hover:border-muted-foreground/30'
+                  }`}
+                >
+                  Có
+                </button>
+                <button
+                  onClick={() => handleAnswerChange('q3_8', false)}
+                  className={`px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                    healthQuestions.q3_8.answer === false
+                      ? 'border-destructive bg-destructive text-destructive-foreground'
+                      : 'border-border bg-card text-foreground hover:border-muted-foreground/30'
+                  }`}
+                >
+                  Không
+                </button>
+              </div>
+            </div>
+            {healthQuestions.q3_8.answer === true && (
+              <div className="pb-3 px-4">
+                <label className="text-xs text-muted-foreground mb-1 block">Loại vắc xin:</label>
+                <input
+                  type="text"
+                  placeholder="Nhập loại vắc xin"
+                  value={healthQuestions.q3_8.vaccineType}
+                  onChange={(e) => handleVaccineTypeChange(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-destructive/50"
+                />
+              </div>
+            )}
+            
+            <QuestionRow questionId="q3_9" text="Có đến/ở vùng có dịch lưu hành (sốt xuất huyết, sốt rét, bò điên, Ebola, Zika, Covid-19,...)?" />
+          </div>
+        </div>
+
+        {/* Question 4 */}
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+          <h3 className="font-medium text-foreground mb-4">4. Trong vòng 02 tuần gần đây, Quý vị có:</h3>
+          <div className="space-y-0">
+            <QuestionRow questionId="q4_1" text="Tiếp xúc với người bệnh/nghi ngờ nhiễm Covid-19?" />
+            <QuestionRow questionId="q4_2" text="Xuất hiện ít nhất 1 trong các dấu hiệu: sốt, ho, khó thở, đau họng, mệt mỏi, thay đổi vị giác, viêm phổi, tiêu chảy?" />
+          </div>
+        </div>
+
+        {/* Question 5 */}
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+          <h3 className="font-medium text-foreground mb-4">5. Trong vòng 01 tuần gần đây, Quý vị có:</h3>
+          <div className="space-y-0">
+            <QuestionRow questionId="q5_1" text="Dùng thuốc kháng sinh, Aspirin, Corticoid,...?" />
+            <QuestionRow questionId="q5_2" text="Đi khám sức khỏe, làm xét nghiệm, chữa răng?" />
+          </div>
+        </div>
+
+        {/* Question 6 */}
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+          <h3 className="font-medium text-foreground mb-3">
+            6. Quý vị hiện là đối tượng khuyết tật nặng, nạn nhân chất độc màu da cam không?
+          </h3>
+          <QuestionRow questionId="q6" text="" />
+        </div>
+
+        {/* Commitment Section */}
+        <div className="bg-card rounded-xl p-4 shadow-sm border border-destructive/30">
+          <h3 className="font-medium text-foreground mb-3">Cam kết</h3>
+          <div className="text-sm text-foreground space-y-3 mb-4">
+            <p>
+              Tôi đã đọc, hiểu rõ, trả lời trung thực và cam kết chịu trách nhiệm về các thông tin cá nhân và các câu hỏi dành cho người hiến máu. Nếu phát hiện thấy nguy cơ mắc bệnh của bản thân, tôi sẽ báo ngay nhằm bảo đảm an toàn cho người bệnh.
+            </p>
+            <p>
+              Tôi đồng ý việc đơn vị máu của tôi được xét nghiệm sàng lọc giang mai, viêm gan B, viêm gan C và HIV theo quy định hiện hành. Tôi đã được thông báo về những lợi ích và những phản ứng không mong muốn có thể xảy ra khi tham gia hiến máu.
+            </p>
+            <p className="font-medium">
+              Hôm nay, tôi hoàn toàn khỏe mạnh và tình nguyện sẵn sàng hiến máu.
+            </p>
+          </div>
+
+          <div className="flex items-start space-x-3 p-3 bg-destructive/5 rounded-lg">
+            <input
+              type="checkbox"
+              id="agreement"
+              checked={agreedToTerms}
+              onChange={(e) => setAgreedToTerms(e.target.checked)}
+              className="mt-1 w-4 h-4 text-destructive rounded focus:ring-destructive"
+            />
+            <label htmlFor="agreement" className="text-sm text-foreground flex-1 cursor-pointer font-medium">
+              Tôi cam kết những thông tin trên là đúng sự thật
+            </label>
+          </div>
+        </div>
+
+        {/* Confirm Button */}
+        <div className="pt-2">
+          <Button
+            onClick={handleConfirmDeclaration}
+            disabled={!canConfirmDeclaration()}
+            className={`w-full py-6 text-base ${
+              canConfirmDeclaration()
+                ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+                : 'bg-muted-foreground/20 text-muted-foreground cursor-not-allowed'
+            }`}
+          >
+            Xác nhận kê khai
+          </Button>
+          {!allQuestionsAnswered() && (
+            <p className="text-xs text-destructive text-center mt-2">
+              Vui lòng trả lời tất cả các câu hỏi
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
