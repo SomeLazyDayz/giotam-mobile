@@ -152,7 +152,7 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
                     {isSecond && <Medal className="w-4 h-4 text-gray-400" />}
                     {isThird && <Medal className="w-4 h-4 text-[#CD7F32]" />}
                     {!isFirst && !isSecond && !isThird && <Medal className="w-4 h-4 text-gray-300" />}
-                    <span className="font-bold text-destructive text-lg leading-none">{donor.reward_points} <span className="text-destructive text-[11px] font-semibold leading-none">pts</span></span>
+                    <span className="font-bold text-destructive text-lg leading-none">{donor.reward_points} <span className="text-[16px] leading-none">❤️</span></span>
                   </div>
                   <div className="bg-red-50 text-destructive text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap mt-1 border border-red-100/50">
                     Nhóm máu {donor.blood_type || '?'}
