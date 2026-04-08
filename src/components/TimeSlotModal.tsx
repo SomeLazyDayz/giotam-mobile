@@ -113,8 +113,9 @@ export function TimeSlotModal({ request, donorId, onClose, onSuccess }: TimeSlot
             <span style={{ fontSize: 13, color: '#555' }}>Cần <strong>{request.amount_ml}ml</strong> máu</span>
           </div>
           {request.note ? (
-            <div style={{ fontSize: 12, color: '#777', marginTop: 8, fontStyle: 'italic' }}>
-              📝 {request.note}
+            <div style={{ fontSize: 12, color: '#555', marginTop: 10, padding: '10px 12px', backgroundColor: '#fff8f0', borderRadius: 10, border: '1px solid #f3d5b0', lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, color: '#8B0000', marginBottom: 4 }}>📋 Thông tin bổ sung từ bệnh viện:</div>
+              <div style={{ whiteSpace: 'pre-wrap' }}>{request.note}</div>
             </div>
           ) : null}
         </div>
