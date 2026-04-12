@@ -70,7 +70,7 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
             {top3[1] && (
               <>
                 <div className="w-[76px] h-[76px] flex-shrink-0 aspect-square bg-gradient-to-br from-gray-100 to-gray-200 border-4 border-gray-300 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-full flex items-center justify-center mb-3">
-                  <span className="text-4xl">🥈</span>
+                  <span style={{fontSize: '44px', lineHeight: 1}}>🥈</span>
                 </div>
                 <div className="mb-px w-full flex justify-center">
                   <span className="bg-destructive text-white font-bold text-[11px] px-2 py-0.5 rounded-full truncate max-w-[80px]">{getLastName(top3[1].name)}</span>
@@ -85,7 +85,7 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
             {top3[0] && (
               <>
                 <div className="w-[100px] h-[100px] flex-shrink-0 aspect-square bg-gradient-to-br from-yellow-100 to-amber-200 border-4 border-yellow-400 shadow-[0_8px_25px_rgba(251,191,36,0.4)] rounded-full flex items-center justify-center mb-3">
-                  <span className="text-5xl">🏆</span>
+                  <span style={{fontSize: '58px', lineHeight: 1}}>🏆</span>
                 </div>
                 <div className="mb-1 w-full flex justify-center">
                   <span className="bg-destructive text-white font-bold text-[12px] px-3 py-[3px] rounded-full truncate max-w-[90px]">{getLastName(top3[0].name)}</span>
@@ -100,7 +100,7 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
             {top3[2] && (
               <>
                 <div className="w-[76px] h-[76px] flex-shrink-0 aspect-square bg-gradient-to-br from-orange-100 to-amber-100 border-4 border-orange-300 shadow-[0_4px_15px_rgba(0,0,0,0.08)] rounded-full flex items-center justify-center mb-3">
-                  <span className="text-4xl">🥉</span>
+                  <span style={{fontSize: '44px', lineHeight: 1}}>🥉</span>
                 </div>
                 <div className="mb-px w-full flex justify-center">
                   <span className="text-gray-500 font-bold text-[11px] px-2 py-0.5 truncate max-w-[80px]">{getLastName(top3[2].name)}</span>
