@@ -1,4 +1,4 @@
-import { Calendar, MapPin, Clock, ChevronRight, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Clock, ChevronRight, ChevronDown, AlertCircle, Info, Droplet } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { PageHeader } from './PageHeader';
@@ -35,6 +35,7 @@ interface AppointmentProps {
 
 export function Appointment({ hasHealthDeclaration, onNavigateToDeclaration, onBack }: AppointmentProps) {
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [expandedLocation, setExpandedLocation] = useState<number | null>(null);
   const [locations, setLocations] = useState<any[]>([]);
   const [expiredIds, setExpiredIds] = useState<Set<number>>(new Set());
 
@@ -66,6 +67,7 @@ export function Appointment({ hasHealthDeclaration, onNavigateToDeclaration, onB
           amountMl: r.amount_ml,
           expirationDate: r.expiration_date,
           urgency: r.urgency,
+          donationType: r.donation_type || 'Toàn phần',
           createdAt: r.created_at,
           available: r.status === 'open'
         }));
@@ -132,45 +134,119 @@ export function Appointment({ hasHealthDeclaration, onNavigateToDeclaration, onB
             Chọn điểm hiến máu <span className="text-destructive">*</span>
           </label>
           <div className="space-y-2">
-            {locations.map((location) => (
-              <button
-                key={location.id}
-                onClick={() => location.available && !expiredIds.has(location.id) && setSelectedLocation(location.id)}
-                disabled={!location.available || expiredIds.has(location.id)}
-                className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                  selectedLocation === location.id
-                    ? 'border-destructive bg-destructive/5'
-                    : (location.available && !expiredIds.has(location.id))
-                    ? 'border-border bg-white hover:border-destructive/30'
-                    : 'border-border bg-gray-100 opacity-50 cursor-not-allowed'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="font-bold text-foreground mb-1">
-                      {location.name}
-                      {location.urgency === 'Khẩn cấp' && <span className="ml-2 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full uppercase">Khẩn cấp</span>}
-                    </div>
-                    <div className="text-xs text-foreground/60 flex items-center flex-wrap gap-1 mt-1">
-                      <MapPin className="w-3.5 h-3.5 shrink-0" />
-                      Cần máu: {location.bloodType} - {location.amountMl}ml
-                      {location.urgency === 'Khẩn cấp' ? (
-                         location.createdAt && <CountdownTimer createdAt={location.createdAt} onExpire={() => handleExpire(location.id)} />
+            {locations.map((location) => {
+              const isExpanded = expandedLocation === location.id;
+              const isSelected = selectedLocation === location.id;
+              const isAvailable = location.available && !expiredIds.has(location.id);
+
+              return (
+                <div
+                  key={location.id}
+                  className={`rounded-2xl border-2 text-left transition-all overflow-hidden ${
+                    isSelected
+                      ? 'border-destructive bg-destructive/5'
+                      : isAvailable
+                      ? 'border-border bg-white'
+                      : 'border-border bg-gray-100 opacity-50'
+                  }`}
+                >
+                  {/* Card Header — bấm để chọn */}
+                  <button
+                    onClick={() => isAvailable && setSelectedLocation(location.id)}
+                    disabled={!isAvailable}
+                    className="w-full p-4 text-left"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="font-bold text-foreground mb-1">
+                          {location.name}
+                          {location.urgency === 'Khẩn cấp' && <span className="ml-2 text-[10px] bg-red-100 text-red-800 px-1.5 py-0.5 rounded-full uppercase">Khẩn cấp</span>}
+                        </div>
+                        <div className="text-xs text-foreground/60 flex items-center flex-wrap gap-1 mt-1">
+                          <MapPin className="w-3.5 h-3.5 shrink-0" />
+                          Cần máu: {location.bloodType} - {location.amountMl}ml
+                          {location.urgency === 'Khẩn cấp' ? (
+                             location.createdAt && <CountdownTimer createdAt={location.createdAt} onExpire={() => handleExpire(location.id)} />
+                          ) : (
+                             location.expirationDate && <span> | Hết hạn: {new Date(location.expirationDate).toLocaleDateString('vi-VN')}</span>
+                          )}
+                        </div>
+                      </div>
+                      {isAvailable ? (
+                        // Nút mũi tên — bấm để mở/đóng chi tiết
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedLocation(isExpanded ? null : location.id);
+                          }}
+                          className="ml-2 mt-1 p-1 rounded-full hover:bg-black/5 transition-colors"
+                        >
+                          {isExpanded
+                            ? <ChevronDown className="w-5 h-5 text-destructive" />
+                            : <ChevronRight className="w-5 h-5 text-foreground/40" />
+                          }
+                        </button>
                       ) : (
-                         location.expirationDate && <span> | Hết hạn: {new Date(location.expirationDate).toLocaleDateString('vi-VN')}</span>
+                        <span className="text-xs text-destructive font-medium bg-destructive/10 px-2 py-1 rounded-full mt-2">
+                          {expiredIds.has(location.id) ? 'Hết giờ' : 'Đã đầy'}
+                        </span>
                       )}
                     </div>
-                  </div>
-                  {location.available && !expiredIds.has(location.id) ? (
-                    <ChevronRight className="w-5 h-5 text-foreground/40 mt-2" />
-                  ) : (
-                    <span className="text-xs text-destructive font-medium bg-destructive/10 px-2 py-1 rounded-full mt-2">
-                      {expiredIds.has(location.id) ? 'Hết giờ' : 'Đã đầy'}
-                    </span>
+                  </button>
+
+                  {/* Chi tiết mở rộng */}
+                  {isExpanded && isAvailable && (
+                    <div className="px-4 pb-4 space-y-3 border-t border-border/40">
+                      {/* Thông tin hiến máu */}
+                      <div className="pt-3">
+                        <p className="text-xs font-bold text-foreground/50 uppercase tracking-wide mb-2 flex items-center gap-1">
+                          <Droplet className="w-3.5 h-3.5" /> Thông tin hiến máu
+                        </p>
+                        <div className="bg-destructive/5 rounded-xl p-3 space-y-1.5 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-foreground/60">Nhóm máu cần:</span>
+                            <span className="font-bold text-destructive">{location.bloodType}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-foreground/60">Lượng máu:</span>
+                            <span className="font-semibold">{location.amountMl} ml</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-foreground/60">Loại hiến:</span>
+                            <span className="font-semibold">{location.donationType}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-foreground/60">Mức độ:</span>
+                            <span className={`font-semibold ${location.urgency === 'Khẩn cấp' ? 'text-red-600' : 'text-green-600'}`}>
+                              {location.urgency}
+                            </span>
+                          </div>
+                          {location.expirationDate && (
+                            <div className="flex justify-between">
+                              <span className="text-foreground/60">Hết hạn:</span>
+                              <span className="font-semibold">{new Date(location.expirationDate).toLocaleDateString('vi-VN')}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Thông tin bổ sung */}
+                      <div>
+                        <p className="text-xs font-bold text-foreground/50 uppercase tracking-wide mb-2 flex items-center gap-1">
+                          <Info className="w-3.5 h-3.5" /> Thông tin bổ sung
+                        </p>
+                        <div className="bg-blue-50 rounded-xl p-3 space-y-1 text-xs text-foreground/70">
+                          <p>• Uống đủ nước trước khi hiến máu (ít nhất 500ml)</p>
+                          <p>• Ăn nhẹ trước khi đến, không để bụng đói</p>
+                          <p>• Mang theo CMND/CCCD để làm thủ tục</p>
+                          <p>• Thời gian thực hiện khoảng 30–45 phút</p>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
