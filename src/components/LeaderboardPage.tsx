@@ -65,11 +65,12 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
       <div className="px-4 mt-8 flex flex-col items-center">
         {/* Podium */}
         <div className="flex items-end justify-center gap-[6px] mb-8 w-full max-w-sm px-2">
+          {/* Hạng 2 - Bạc */}
           <div className="flex-1 flex flex-col items-center text-center">
             {top3[1] && (
               <>
-                <div className="w-[72px] h-[72px] flex-shrink-0 aspect-square bg-white border border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.05)] rounded-full flex items-center justify-center mb-3">
-                  <span className="font-extrabold text-2xl text-foreground">2</span>
+                <div className="w-[76px] h-[76px] flex-shrink-0 aspect-square bg-gradient-to-br from-gray-100 to-gray-200 border-4 border-gray-300 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-full flex items-center justify-center mb-3">
+                  <span className="text-4xl">🥈</span>
                 </div>
                 <div className="mb-px w-full flex justify-center">
                   <span className="bg-destructive text-white font-bold text-[11px] px-2 py-0.5 rounded-full truncate max-w-[80px]">{getLastName(top3[1].name)}</span>
@@ -79,11 +80,12 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
             )}
           </div>
           
+          {/* Hạng 1 - Vàng */}
           <div className="flex-[1.2] flex flex-col items-center -mt-8 text-center pb-4">
             {top3[0] && (
               <>
-                <div className="w-[96px] h-[96px] flex-shrink-0 aspect-square bg-white border border-gray-100 shadow-[0_8px_25px_rgba(0,0,0,0.08)] rounded-full flex items-center justify-center mb-3">
-                  <span className="font-black text-4xl text-foreground">1</span>
+                <div className="w-[100px] h-[100px] flex-shrink-0 aspect-square bg-gradient-to-br from-yellow-100 to-amber-200 border-4 border-yellow-400 shadow-[0_8px_25px_rgba(251,191,36,0.4)] rounded-full flex items-center justify-center mb-3">
+                  <span className="text-5xl">🏆</span>
                 </div>
                 <div className="mb-1 w-full flex justify-center">
                   <span className="bg-destructive text-white font-bold text-[12px] px-3 py-[3px] rounded-full truncate max-w-[90px]">{getLastName(top3[0].name)}</span>
@@ -93,11 +95,12 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
             )}
           </div>
           
+          {/* Hạng 3 - Đồng */}
           <div className="flex-1 flex flex-col items-center text-center">
             {top3[2] && (
               <>
-                <div className="w-[72px] h-[72px] flex-shrink-0 aspect-square bg-white border border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.05)] rounded-full flex items-center justify-center mb-3">
-                  <span className="font-extrabold text-2xl text-gray-400">3</span>
+                <div className="w-[76px] h-[76px] flex-shrink-0 aspect-square bg-gradient-to-br from-orange-100 to-amber-100 border-4 border-orange-300 shadow-[0_4px_15px_rgba(0,0,0,0.08)] rounded-full flex items-center justify-center mb-3">
+                  <span className="text-4xl">🥉</span>
                 </div>
                 <div className="mb-px w-full flex justify-center">
                   <span className="text-gray-500 font-bold text-[11px] px-2 py-0.5 truncate max-w-[80px]">{getLastName(top3[2].name)}</span>
@@ -136,8 +139,8 @@ export function LeaderboardPage({ onBack }: LeaderboardPageProps) {
             return (
               <div key={index} className="flex items-center justify-between p-4 bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-gray-50/80">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="w-8 h-8 flex-shrink-0 border-2 border-gray-100 rounded-full flex items-center justify-center font-bold text-foreground bg-gray-50/30">
-                    {index + 1}
+                  <div className="w-9 h-9 flex-shrink-0 rounded-full flex items-center justify-center text-xl">
+                    {index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : <span className="text-sm font-bold text-gray-400 border-2 border-gray-200 rounded-full w-full h-full flex items-center justify-center">{index + 1}</span>}
                   </div>
                   
                   <div className="flex flex-col justify-center min-w-0 pr-4">
